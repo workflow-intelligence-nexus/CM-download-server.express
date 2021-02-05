@@ -165,11 +165,6 @@ http.createServer(server).listen(80, () => {
   console.log("HTTP listening on 80");
 });
 
-// https.createServer(options, server).listen(443, () => {
-//     console.log('HTTPS listening on 443')
-// })
-
-// gcloud auth activate-service-account iconik-deploy@iconik-ed28e.iam.gserviceaccount.com --key-file=/path/iconik-ed28e.json --project=iconik-ed28e
-// gcloud auth activate-service-account iconik-deploy@iconik-ed28e.iam.gserviceaccount.com --key-file=/path/key.json --project=testproject
-// /etc/ssl/cloudflare/hechostudios.com.cert.pem
-// /etc/ssl/cloudflare/hechostudios.com.privkey.pem
+https.createServer(options, server).listen(443, () => {
+    console.log('HTTPS listening on 443')
+})
