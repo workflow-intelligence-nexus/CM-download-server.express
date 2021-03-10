@@ -9,8 +9,8 @@ const FakeSource = require("./FakeSource");
 const FakeOutsource = require("./FakeOutsource");
 
 const options = {
-  key: fs.readFileSync("./transfer-key.pem"),
-  cert: fs.readFileSync("./transfer-cert.pem"),
+  key: fs.readFileSync("/etc/ssl/cloudflare/hechostudios.com.privkey.pem"),
+  cert: fs.readFileSync("/etc/ssl/cloudflare/hechostudios.com.cert.pem"),
 };
 
 const whitelist = [
@@ -70,59 +70,54 @@ server.post("/source-files", (req, res) => {
   }
 });
 
+server.get("/sources-size", async (req, res) => {
+  const siteId = req.query && req.query.siteId;
+  const files = filesDictionary[siteId].filter((file) => !!file.link);
+  if (!siteId || !files) {
+    res.sendStatus(400).end();
+    return;
+  }
+
+  let sources;
+  try {
+    sources = await getSourcesInfo(files);
+  } catch (error) {
+    axiosErrorLogger(error);
+    res.status(400).send(`Bad request`).end();
+  }
+  const fakeTarget = new FakeOutsource();
+  const totalSize = await downloadAsZip(sources, fakeTarget, res, true);
+  res.end(totalSize.toString());
+});
+
 server.get("/archive", async (req, res) => {
   const siteId = req.query && req.query.siteId;
+  const totalSize =
+    req.query.totalSize && req.query.totalSize.replace(/\*/g, "");
   const files = filesDictionary[siteId];
 
-  if (!siteId || !files) {
+  if (!siteId || !files || !totalSize) {
     res.sendStatus(400).end();
     return;
   }
 
   delete filesDictionary[siteId];
 
+  const sources = files
+    .map((file) => ({
+      data: null,
+      filename: file.name,
+      path: file.path,
+      link: file.link,
+    }))
+    .filter((source) => !!source.link);
 
-  console.log(new Date())
-
-  const responses = await Promise.all(
-    files.map(async (file) => {
-      let response = {};
-      if (file.link) {
-        response = await axios(file.link, {
-          responseType: "stream",
-          httpAgent: new http.Agent({ keepAlive: true }),
-          httpsAgent: new https.Agent({ keepAlive: true }),
-        });
-      }
-      const length = +response.headers["content-length"] || 0;
-      console.log("LENGTH");
-      console.log(length);
-      return {
-        headers: response.headers || {},
-        data: new FakeSource({
-          size: length,
-          chunkSize: 20000,
-          highWaterMark: 20000,
-        }),
-        filename: file.name,
-        path: file.path,
-        link: file.link,
-      };
-    })
-  );
-
-  const fakeTarget = new FakeOutsource();
-
-  const totalSize = await downloadAsZip(responses, fakeTarget, true);
-  const archiveName = responses[0]["path"].split("/")[0];
-  console.log('TOTOTAL SIZE BEFORE: ', totalSize)
+  const archiveName = sources[0]["path"].split("/")[0];
   setHeaders(archiveName, totalSize, res);
-  console.log(new Date())
-  await downloadAsZip(responses, res, false);
-
+  await downloadAsZip(sources, res, false);
 });
 
-function downloadAsZip(sourceStreams, targetStream, isFake) {
+function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
   return new Promise(async (resolve, reject) => {
     const archive = archiver("zip", {
       zlib: { level: 0 }, // Sets the compression level.
@@ -143,8 +138,6 @@ function downloadAsZip(sourceStreams, targetStream, isFake) {
     if (!isFake) {
       const totalSources = sourceStreams.length;
       archive.on("progress", async (progress) => {
-        console.log("PROGRESS");
-        console.log(progress);
         let processedItems = progress.entries.processed;
         if (processedItems < totalSources) {
           await updateSource(sourceStreams[processedItems]);
@@ -156,12 +149,50 @@ function downloadAsZip(sourceStreams, targetStream, isFake) {
       await updateSource(sourceStreams[0]);
       appendToArchive(archive, sourceStreams[0]);
     } else {
+      // archive.on("progress", () => {
+      //   origRes.write("*");
+      // });
       sourceStreams.forEach((source) => {
         appendToArchive(archive, source);
       });
       archive.finalize();
     }
   });
+}
+
+async function getSourcesInfo(files) {
+  return await Promise.all(
+    files
+      .map(async (file) => {
+        let response = {};
+        let length;
+        try {
+          if (file.link) {
+            response = await axios(file.link, {
+              responseType: "stream",
+              httpAgent: new http.Agent({ keepAlive: true }),
+              httpsAgent: new https.Agent({ keepAlive: true }),
+            });
+            length = +response.headers["content-length"] || 0;
+            return {
+              data: new FakeSource({
+                size: length,
+                chunkSize: 20000,
+                highWaterMark: 20000,
+              }),
+              filename: file.name,
+              path: file.path,
+              link: file.link,
+            };
+          }
+        } catch (error) {
+          error.message = error.masssage + " " + "file: " + file.name;
+          axiosErrorLogger(error);
+          return null;
+        }
+      })
+      .filter((source) => !!source)
+  );
 }
 
 async function updateSource(source) {
@@ -212,6 +243,7 @@ https.createServer(options, server).listen(443, () => {
 });
 
 function axiosErrorLogger(error) {
+  console.log(new Date());
   if (error.response) {
     console.log(error.response.data);
     console.log(error.response.status);
