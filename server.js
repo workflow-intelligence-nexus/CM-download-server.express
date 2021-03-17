@@ -22,9 +22,9 @@ server.use(express.json());
 
 server.all("/*", (req, res, next) => {
   const origin = req.headers.origin;
-  // if (whitelist.indexOf(origin) != -1) {
+  if (whitelist.indexOf(origin) != -1) {
     res.setHeader("Access-Control-Allow-Origin", origin);
-  // }
+  }
   res.setHeader("Access-Control-Allow-Headers", [
     "Content-Type",
     "X-Requested-With",
@@ -61,9 +61,7 @@ server.post("/source-files", (req, res) => {
     } else {
       Object.assign(filesDictionary, body);
     }
-    setTimeout(() => {
-      res.sendStatus(200).end();
-    }, 10000);
+    res.sendStatus(200).end();
   } else {
     res.sendStatus(400).end();
   }
