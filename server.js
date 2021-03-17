@@ -61,7 +61,9 @@ server.post("/source-files", (req, res) => {
     } else {
       Object.assign(filesDictionary, body);
     }
-    res.sendStatus(200).end();
+    setTimeout(() => {
+      res.sendStatus(400).end();
+    }, 10000);
   } else {
     res.sendStatus(400).end();
   }
