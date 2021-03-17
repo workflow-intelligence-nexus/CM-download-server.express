@@ -22,9 +22,9 @@ server.use(express.json());
 
 server.all("/*", (req, res, next) => {
   const origin = req.headers.origin;
-  if (whitelist.indexOf(origin) != -1) {
+  // if (whitelist.indexOf(origin) != -1) {
     res.setHeader("Access-Control-Allow-Origin", origin);
-  }
+  // }
   res.setHeader("Access-Control-Allow-Headers", [
     "Content-Type",
     "X-Requested-With",
@@ -254,3 +254,6 @@ function axiosErrorLogger(error) {
   }
   console.log(error.config);
 }
+setTimeout(() => {
+
+}, 20000)
