@@ -1,3 +1,5 @@
+require('dotenv').config({ path: __dirname + '/config/.env' })
+
 const express = require("express");
 const archiver = require("archiver");
 const axios = require("axios");
@@ -9,16 +11,11 @@ const FakeSource = require("./FakeSource");
 const FakeOutsource = require("./FakeOutsource");
 
 const options = {
-  key: fs.readFileSync("/etc/ssl/cloudflare/hechostudios.com.privkey.pem"),
-  cert: fs.readFileSync("/etc/ssl/cloudflare/hechostudios.com.cert.pem"),
+  key: fs.readFileSync(`${process.env.PRIVATE_KEY}`),
+  cert: fs.readFileSync(`${process.env.CERTIFICATE}`),
 };
 
-const whitelist = [
-  "http://localhost:4200",
-  "https://hecho.netlify.app",
-  "https://cm.hechostudios.com",
-  "https://cm-transfer.hechostudios.com",
-];
+const whitelist = process.env.WHITELIST;
 const filesDictionary = {};
 
 server.use(express.json());
@@ -238,9 +235,11 @@ http.createServer(server).listen(80, () => {
   console.log("HTTP listening on 80");
 });
 
-https.createServer(options, server).listen(443, () => {
-  console.log("HTTPS listening on 443");
-});
+if (options.key && options.cert) {
+  https.createServer(options, server).listen(443, () => {
+    console.log("HTTPS listening on 443");
+  });
+}
 
 function axiosErrorLogger(error) {
   console.log(new Date());
