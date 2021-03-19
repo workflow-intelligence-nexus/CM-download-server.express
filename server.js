@@ -235,11 +235,10 @@ http.createServer(server).listen(80, () => {
   console.log("HTTP listening on 80");
 });
 
-if (options.key && options.cert) {
-  https.createServer(options, server).listen(443, () => {
-    console.log("HTTPS listening on 443");
-  });
-}
+https.createServer(options, server).listen(443, () => {
+  console.log("HTTPS listening on 443");
+});
+
 
 function axiosErrorLogger(error) {
   console.log(new Date());
