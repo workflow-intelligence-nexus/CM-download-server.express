@@ -11,8 +11,8 @@ const FakeSource = require("./FakeSource");
 const FakeOutsource = require("./FakeOutsource");
 
 const options = {
-  key: process.env.PRIVATE_KEY,
-  cert: process.env.CERTIFICATE,
+  key: fs.readFileSync(process.env.PRIVATE_KEY),
+  cert: fs.readFileSync(process.env.CERTIFICATE),
 };
 
 const whitelist = process.env.WHITELIST;
