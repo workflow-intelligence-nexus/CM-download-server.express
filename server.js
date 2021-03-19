@@ -258,6 +258,3 @@ function axiosErrorLogger(error) {
   }
   console.log(error.config);
 }
-setTimeout(() => {
-
-}, 20000)
