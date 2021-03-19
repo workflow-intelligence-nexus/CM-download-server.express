@@ -11,8 +11,8 @@ const FakeSource = require("./FakeSource");
 const FakeOutsource = require("./FakeOutsource");
 
 const options = {
-  key: fs.readFileSync(process.env.PRIVATE_KEY),
-  cert: fs.readFileSync(process.env.CERTIFICATE),
+  key: process.env.PRIVATE_KEY,
+  cert: process.env.CERTIFICATE,
 };
 
 const whitelist = process.env.WHITELIST;
@@ -235,7 +235,7 @@ http.createServer(server).listen(80, () => {
   console.log("HTTP listening on 80");
 });
 
-https.createServer(options, server).listen(443, () => {
+https.createServer(server).listen(443, () => {
   console.log("HTTPS listening on 443");
 });
 
