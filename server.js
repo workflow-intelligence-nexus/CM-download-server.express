@@ -11,8 +11,8 @@ const FakeSource = require("./FakeSource");
 const FakeOutsource = require("./FakeOutsource");
 
 const options = {
-  key: process.env.PRIVATE_KEY,
-  cert: process.env.CERTIFICATE,
+  key: process.env.PRIVATE_KEY ? fs.readFileSync(process.env.PRIVATE_KEY) : '',
+  cert: process.env.CERTIFICATE ? fs.readFileSync(process.env.CERTIFICATE) : '',
 };
 
 const whitelist = process.env.WHITELIST;
@@ -235,10 +235,15 @@ http.createServer(server).listen(80, () => {
   console.log("HTTP listening on 80");
 });
 
-https.createServer(server).listen(443, () => {
-  console.log("HTTPS listening on 443");
-});
-
+if (options.key && options.cert) {
+  https.createServer(options, server).listen(443, () => {
+    console.log("HTTPS listening on 443");
+  });
+} else {
+  https.createServer(server).listen(443, () => {
+    console.log("HTTPS listening on 443");
+  });
+}
 
 function axiosErrorLogger(error) {
   console.log(new Date());
