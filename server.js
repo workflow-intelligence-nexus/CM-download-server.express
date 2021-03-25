@@ -72,7 +72,6 @@ server.post("/update-assets-sources", async (req, res) => {
   const data = await Promise.all(
       assetsIds.map(async (assetId) => {
         const assetUrls = await getAssetSourcesUrls(assetId);
-        console.log('asset urls', assetUrls);
         return {
           assetId,
           ...assetUrls,
@@ -80,6 +79,19 @@ server.post("/update-assets-sources", async (req, res) => {
       })
   );
   console.log('update assets response', data);
+  res.end(JSON.stringify(data));
+})
+
+server.post("/get-assets-origin-url", async (req, res) => {
+  const assetsIds = req.body;
+  const service = new CollectionMicrositeService();
+  const data = await Promise.all(
+      assetsIds.map(async (assetId) => ({
+        assetId,
+        sourceURL: await service.getOriginSourceUrl(assetId),
+      }))
+  );
+  console.log('get assets origin url response', data);
   res.end(JSON.stringify(data));
 })
 
