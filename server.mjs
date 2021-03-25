@@ -2,16 +2,23 @@ import {CollectionMicrositeService} from "./collectionMicrosite.service.mjs";
 import {config} from "dotenv";
 config({ path: __dirname + '/config/.env' });
 // require('dotenv').config({ path: __dirname + '/config/.env' })
-
-const express = require("express");
-const archiver = require("archiver");
-const axios = require("axios");
+import * as express from 'express';
+import * as archiver from 'archiver';
+import * as axios from 'axios';
+import * as http from 'http';
+import * as https from 'https';
+import * as fs from 'fs';
+import * as FakeSource from './FakeSource';
+import * as FakeOutsource from './FakeOutsource';
 const server = express();
-const http = require("http");
-const https = require("https");
-const fs = require("fs");
-const FakeSource = require("./FakeSource");
-const FakeOutsource = require("./FakeOutsource");
+
+// const archiver = require("archiver");
+// const axios = require("axios");
+// const http = require("http");
+// const https = require("https");
+// const fs = require("fs");
+// const FakeSource = require("./FakeSource");
+// const FakeOutsource = require("./FakeOutsource");
 
 const options = {
   key: process.env.PRIVATE_KEY ? fs.readFileSync(process.env.PRIVATE_KEY) : '',
