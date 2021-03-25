@@ -1,5 +1,5 @@
 import { IconikService } from '@workflowwin/iconik-api';
-import Helper from "./helper/helper.js";
+import Helper from "./helper/helper.mjs";
 
 export class CollectionMicrositeService {
     iconik = new IconikService({
