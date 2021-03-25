@@ -23,7 +23,7 @@ module.exports = class CollectionMicrositeService {
             const proxyURL = proxy.objects[0].url;
             const sourceURL = await this.getOriginSourceUrl(assetId);
             const keyframeURL = keyframes.objects?.find((keyframe) => keyframe.type === 'KEYFRAME')?.url;
-
+            console.log('keyframe url', keyframeURL);
             return {
                 proxyURL,
                 sourceURL,

@@ -72,6 +72,7 @@ server.post("/update-assets-sources", (req, res) => {
   const data = Promise.all(
       assetsIds.map(async (assetId) => {
         const assetUrls = await getAssetSourcesUrls(assetId);
+        console.log('asset urls', assetUrls);
         return {
           assetId,
           ...assetUrls,
