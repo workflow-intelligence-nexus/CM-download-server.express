@@ -1,4 +1,4 @@
-import {CollectionMicrositeService} from "./collectionMicrosite.service";
+import {CollectionMicrositeService} from "./collectionMicrosite.service.mjs";
 
 require('dotenv').config({ path: __dirname + '/config/.env' })
 
