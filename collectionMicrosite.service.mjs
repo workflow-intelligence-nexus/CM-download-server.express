@@ -1,7 +1,7 @@
-import { IconikService } from '@workflowwin/iconik-api';
-import Helper from "./helper/helper.mjs";
+const { IconikService } = require('@workflowwin/iconik-api');
+const Helper = require('./helper/helper.mjs');
 
-export class CollectionMicrositeService {
+module.exports = class CollectionMicrositeService {
     iconik = new IconikService({
         appId: '3b427aee-7b88-11eb-b6fa-067533028b2e',
         authToken: 'eyJhbGciOiJIUzI1NiIsImlhdCI6MTYxNjY1MDUzNiwiZXhwIjoxOTMyMDEwNTM2fQ.eyJpZCI6ImVkMmJiMGE0LThkMmItMTFlYi1hNWMxLThhYWJiYTNmYzAzMyJ9.MST0nYPE_kuAtxDc238ZY7F-Q4UzXJObbLr7goElxRQ',

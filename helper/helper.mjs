@@ -1,6 +1,6 @@
-import { IconikService } from '@workflowwin/iconik-api';
+const { IconikService } = require('@workflowwin/iconik-api');
 
-export default class Helper {
+module.exports = class Helper {
     createIconikService(options = null, request = null) {
         const iconikOptions = {
             appId: '3b427aee-7b88-11eb-b6fa-067533028b2e',
