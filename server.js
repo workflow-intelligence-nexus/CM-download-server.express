@@ -69,7 +69,7 @@ server.post("/source-files", (req, res) => {
 
 server.post("/update-assets-sources", (req, res) => {
   const assetsIds = req.body;
-  return Promise.all(
+  const data = Promise.all(
       assetsIds.map(async (assetId) => {
         const assetUrls = await getAssetSourcesUrls(assetId);
         return {
@@ -78,6 +78,8 @@ server.post("/update-assets-sources", (req, res) => {
         };
       })
   );
+  console.log('update assets response', data);
+  return data;
 })
 
 server.get("/sources-size", async (req, res) => {
