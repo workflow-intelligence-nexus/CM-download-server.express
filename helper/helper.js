@@ -1,15 +1,16 @@
 import { IconikService } from '@workflowwin/iconik-api';
 
-export function createIconikService(options = null, request = null) {
-    const iconikOptions = {
-        appId: process.env.ICONIK_APP_ID,
-        authToken: request
-            ? request.headers['Auth-Token'] || request.headers['auth-token']
-            : process.env.ICONIK_AUTH_TOKEN,
-        iconikUrl: process.env.ICONIK_URL,
-        systemDomainId: process.env.ICONIK_SYSTEM_DOMAIN_ID,
-        ...options,
-    };
+export default class Helper {
+    createIconikService(options = null, request = null) {
+        const iconikOptions = {
+            appId: '3b427aee-7b88-11eb-b6fa-067533028b2e',
+            authToken: request
+                ? request.headers['Auth-Token'] || request.headers['auth-token']
+                : 'eyJhbGciOiJIUzI1NiIsImlhdCI6MTYxNjY1MDUzNiwiZXhwIjoxOTMyMDEwNTM2fQ.eyJpZCI6ImVkMmJiMGE0LThkMmItMTFlYi1hNWMxLThhYWJiYTNmYzAzMyJ9.MST0nYPE_kuAtxDc238ZY7F-Q4UzXJObbLr7goElxRQ',
+            iconikUrl: 'https://preview.iconik.cloud/',
+            ...options,
+        };
 
-    return new IconikService(iconikOptions);
+        return new IconikService(iconikOptions);
+    }
 }

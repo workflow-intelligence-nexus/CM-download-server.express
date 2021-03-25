@@ -1,5 +1,5 @@
 import { IconikService } from '@workflowwin/iconik-api';
-import {createIconikService} from "./helper/helper.js";
+import Helper from "./helper/helper.js";
 
 export class CollectionMicrositeService {
     iconik = new IconikService({
@@ -8,7 +8,7 @@ export class CollectionMicrositeService {
         iconikUrl: 'https://preview.iconik.cloud/',
     });
     constructor() {
-        this.iconik = createIconikService();
+        this.iconik = Helper.prototype.createIconikService();
     }
     async getAssetUrls(assetId) {
         const assetURLS = {
