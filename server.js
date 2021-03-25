@@ -67,9 +67,9 @@ server.post("/source-files", (req, res) => {
   }
 });
 
-server.post("/update-assets-sources", (req, res) => {
+server.post("/update-assets-sources", async (req, res) => {
   const assetsIds = req.body;
-  const data = Promise.all(
+  const data = await Promise.all(
       assetsIds.map(async (assetId) => {
         const assetUrls = await getAssetSourcesUrls(assetId);
         console.log('asset urls', assetUrls);
@@ -132,7 +132,9 @@ server.get("/archive", async (req, res) => {
 
 async function getAssetSourcesUrls(assetId) {
   const service = new CollectionMicrositeService();
-  return await service.getAssetUrls(assetId);
+  const response = await service.getAssetUrls(assetId);
+  console.log('get asset sources urls response', response);
+  return response;
 }
 
 function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
