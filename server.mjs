@@ -1,6 +1,7 @@
 import {CollectionMicrositeService} from "./collectionMicrosite.service.mjs";
-
-require('dotenv').config({ path: __dirname + '/config/.env' })
+import {config} from "dotenv";
+config({ path: __dirname + '/config/.env' });
+// require('dotenv').config({ path: __dirname + '/config/.env' })
 
 const express = require("express");
 const archiver = require("archiver");
