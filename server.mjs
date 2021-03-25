@@ -7,8 +7,8 @@ const axios = require("axios");
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
-const FakeSource = require("./FakeSource");
-const FakeOutsource = require("./FakeOutsource");
+const FakeSource = require("./FakeSource.mjs");
+const FakeOutsource = require("./FakeOutsource.mjs");
 
 const options = {
   key: process.env.PRIVATE_KEY ? fs.readFileSync(process.env.PRIVATE_KEY) : '',
