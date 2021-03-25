@@ -1,5 +1,5 @@
 const { IconikService } = require('@workflowwin/iconik-api');
-const Helper = require('./helper/helper.mjs');
+const Helper = require('./helper/helper.js');
 
 module.exports = class CollectionMicrositeService {
     iconik = new IconikService({

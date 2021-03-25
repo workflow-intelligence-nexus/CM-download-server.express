@@ -1,5 +1,5 @@
 const express = require("express");
-const CollectionMicrositeService = require("./collectionMicrosite.service.mjs");
+const CollectionMicrositeService = require("./collectionMicrosite.service.js");
 require('dotenv').config({ path: __dirname + '/config/.env' });
 const server = express();
 const archiver = require("archiver");
@@ -7,8 +7,8 @@ const axios = require("axios");
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
-const FakeSource = require("./FakeSource.mjs");
-const FakeOutsource = require("./FakeOutsource.mjs");
+const FakeSource = require("./FakeSource.js");
+const FakeOutsource = require("./FakeOutsource.js");
 
 const options = {
   key: process.env.PRIVATE_KEY ? fs.readFileSync(process.env.PRIVATE_KEY) : '',
