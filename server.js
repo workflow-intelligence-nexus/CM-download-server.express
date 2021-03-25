@@ -80,7 +80,7 @@ server.post("/update-assets-sources", async (req, res) => {
       })
   );
   console.log('update assets response', data);
-  return data;
+  res.end(data);
 })
 
 server.get("/sources-size", async (req, res) => {
