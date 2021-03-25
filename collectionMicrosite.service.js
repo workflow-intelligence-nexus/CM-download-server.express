@@ -21,7 +21,7 @@ module.exports = class CollectionMicrositeService {
             const keyframes = await this.iconik.files.getAssetKeyframes(assetId);
 
             const proxyURL = proxy.objects[0].url;
-            const sourceURL = await this.getOriginSourceUrl(this.iconik, assetId);
+            const sourceURL = await this.getOriginSourceUrl(assetId);
             const keyframeURL = keyframes.objects?.find((keyframe) => keyframe.type === 'KEYFRAME')?.url;
 
             return {
