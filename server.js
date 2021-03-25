@@ -1,3 +1,5 @@
+import {CollectionMicrositeService} from "./collectionMicrosite.service";
+
 require('dotenv').config({ path: __dirname + '/config/.env' })
 
 const express = require("express");
@@ -67,6 +69,19 @@ server.post("/source-files", (req, res) => {
   }
 });
 
+server.post("/update-assets-sources", (req, res) => {
+  const assetsIds = req.body;
+  return Promise.all(
+      assetsIds.map(async (assetId) => {
+        const assetUrls = await getAssetSourcesUrls(assetId);
+        return {
+          assetId,
+          ...assetUrls,
+        };
+      })
+  );
+})
+
 server.get("/sources-size", async (req, res) => {
   const siteId = req.query && req.query.siteId;
   const files = filesDictionary[siteId].filter((file) => !!file.link);
@@ -113,6 +128,11 @@ server.get("/archive", async (req, res) => {
   setHeaders(archiveName, totalSize, res);
   await downloadAsZip(sources, res, false);
 });
+
+async function getAssetSourcesUrls(assetId) {
+  const service = new CollectionMicrositeService();
+  return await service.getAssetUrls(assetId);
+}
 
 function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
   return new Promise(async (resolve, reject) => {
