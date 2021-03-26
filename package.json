@@ -15,6 +15,7 @@
     "archiver": "^5.1.0",
     "axios": "^0.21.0",
     "dotenv": "^8.2.0",
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "@workflowwin/iconik-api": "^2.1.46"
   }
 }

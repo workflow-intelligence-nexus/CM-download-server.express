@@ -1,14 +1,14 @@
-require('dotenv').config({ path: __dirname + '/config/.env' })
-
 const express = require("express");
+const CollectionMicrositeService = require("./collectionMicrosite.service.js");
+require('dotenv').config({ path: __dirname + '/config/.env' });
+const server = express();
 const archiver = require("archiver");
 const axios = require("axios");
-const server = express();
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
-const FakeSource = require("./FakeSource");
-const FakeOutsource = require("./FakeOutsource");
+const FakeSource = require("./FakeSource.js");
+const FakeOutsource = require("./FakeOutsource.js");
 
 const options = {
   key: process.env.PRIVATE_KEY ? fs.readFileSync(process.env.PRIVATE_KEY) : '',
@@ -67,6 +67,34 @@ server.post("/source-files", (req, res) => {
   }
 });
 
+server.post("/update-assets-sources", async (req, res) => {
+  const assetsIds = req.body;
+  const data = await Promise.all(
+      assetsIds.map(async (assetId) => {
+        const assetUrls = await getAssetSourcesUrls(assetId);
+        return {
+          assetId,
+          ...assetUrls,
+        };
+      })
+  );
+  console.log('update assets response', data);
+  res.end(JSON.stringify(data));
+})
+
+server.post("/get-assets-origin-url", async (req, res) => {
+  const assetsIds = req.body;
+  const service = new CollectionMicrositeService();
+  const data = await Promise.all(
+      assetsIds.map(async (assetId) => ({
+        assetId,
+        sourceURL: await service.getOriginSourceUrl(assetId),
+      }))
+  );
+  console.log('get assets origin url response', data);
+  res.end(JSON.stringify(data));
+})
+
 server.get("/sources-size", async (req, res) => {
   const siteId = req.query && req.query.siteId;
   const files = filesDictionary[siteId].filter((file) => !!file.link);
@@ -113,6 +141,13 @@ server.get("/archive", async (req, res) => {
   setHeaders(archiveName, totalSize, res);
   await downloadAsZip(sources, res, false);
 });
+
+async function getAssetSourcesUrls(assetId) {
+  const service = new CollectionMicrositeService();
+  const response = await service.getAssetUrls(assetId);
+  console.log('get asset sources urls response', response);
+  return response;
+}
 
 function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
   return new Promise(async (resolve, reject) => {
