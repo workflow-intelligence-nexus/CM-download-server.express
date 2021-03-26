@@ -3,11 +3,11 @@ const { IconikService } = require('@workflowwin/iconik-api');
 module.exports = class Helper {
     createIconikService(options = null, request = null) {
         const iconikOptions = {
-            appId: '3b427aee-7b88-11eb-b6fa-067533028b2e',
+            appId: process.env.APP_ID,
             authToken: request
                 ? request.headers['Auth-Token'] || request.headers['auth-token']
-                : 'eyJhbGciOiJIUzI1NiIsImlhdCI6MTYxNjY1MDUzNiwiZXhwIjoxOTMyMDEwNTM2fQ.eyJpZCI6ImVkMmJiMGE0LThkMmItMTFlYi1hNWMxLThhYWJiYTNmYzAzMyJ9.MST0nYPE_kuAtxDc238ZY7F-Q4UzXJObbLr7goElxRQ',
-            iconikUrl: 'https://preview.iconik.cloud/',
+                : process.env.AUTH_TOKEN,
+            iconikUrl: process.env.ICONIK_URL,
             ...options,
         };
 
