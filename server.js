@@ -5,6 +5,7 @@ const server = express();
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
+const StreamArchiver = require("stream-archiver");
 const FakeSource = require("./FakeSource");
 const FakeOutsource = require("./FakeOutsource");
 
@@ -12,46 +13,43 @@ const options = {
   key: fs.readFileSync("/etc/ssl/cloudflare/hechostudios.com.privkey.pem"),
   cert: fs.readFileSync("/etc/ssl/cloudflare/hechostudios.com.cert.pem"),
 };
-
 const whitelist = [
   "http://localhost:4200",
   "https://hecho.netlify.app",
   "https://cm.hechostudios.com",
   "https://cm-transfer.hechostudios.com",
+  "https://collection-microsite-dev.netlify.app",
 ];
 const filesDictionary = {};
-
 server.use(express.json());
-
 server.all("/*", (req, res, next) => {
+
   const origin = req.headers.origin;
   if (whitelist.indexOf(origin) != -1) {
     res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Headers", [
+      "Content-Type",
+      "X-Requested-With",
+      "X-HTTP-Method-Override",
+      "Accept",
+    ]);
+    res.setHeader("Access-Control-Allow-Headers", [
+      "Content-Type",
+      "X-Requested-With",
+      "X-HTTP-Method-Override",
+      "Accept",
+    ]);
+    res.setHeader("Access-Control-Allow-Credentials", true);
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST");
+    res.setHeader("Cache-Control", "no-store,no-cache,must-revalidate");
+    res.setHeader("Vary", "Origin");
+    if (req.method === "OPTIONS") {
+      res.status(200).send("");
+      return;
+    }
+    next();
   }
-  res.setHeader("Access-Control-Allow-Headers", [
-    "Content-Type",
-    "X-Requested-With",
-    "X-HTTP-Method-Override",
-    "Accept",
-  ]);
-  res.setHeader("Access-Control-Allow-Headers", [
-    "Content-Type",
-    "X-Requested-With",
-    "X-HTTP-Method-Override",
-    "Accept",
-  ]);
-  res.setHeader("Access-Control-Allow-Credentials", true);
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST");
-  res.setHeader("Cache-Control", "no-store,no-cache,must-revalidate");
-  res.setHeader("Vary", "Origin");
-
-  if (req.method === "OPTIONS") {
-    res.status(200).send("");
-    return;
-  }
-  next();
-});
-
+);
 server.post("/source-files", (req, res) => {
   const body = req.body;
   if (Object.keys(body).length != 0 && body.constructor === Object) {
@@ -69,7 +67,6 @@ server.post("/source-files", (req, res) => {
     res.sendStatus(400).end();
   }
 });
-
 server.get("/sources-size", async (req, res) => {
   const siteId = req.query && req.query.siteId;
   const files = filesDictionary[siteId].filter((file) => !!file.link);
@@ -77,7 +74,6 @@ server.get("/sources-size", async (req, res) => {
     res.sendStatus(400).end();
     return;
   }
-
   let sources;
   try {
     sources = await getSourcesInfo(files);
@@ -95,14 +91,11 @@ server.get("/archive", async (req, res) => {
   const totalSize =
     req.query.totalSize && req.query.totalSize.replace(/\*/g, "");
   const files = filesDictionary[siteId];
-
   if (!siteId || !files || !totalSize) {
     res.sendStatus(400).end();
     return;
   }
-
   delete filesDictionary[siteId];
-
   const sources = files
     .map((file) => ({
       data: null,
@@ -111,30 +104,37 @@ server.get("/archive", async (req, res) => {
       link: file.link,
     }))
     .filter((source) => !!source.link);
-
   const archiveName = sources[0]["path"].split("/")[0];
+  const arr = sources.map((file) => ({ fileNameWithExt: `${file.path}/${file.filename}`, url: file.link }));
+  const streamArchiver = new StreamArchiver(
+    'zip',
+    undefined,
+    2,
+    [{ stream: res }],
+    arr,
+    true
+  );
   setHeaders(archiveName, totalSize, res);
-  await downloadAsZip(sources, res, false);
+
+  await streamArchiver.process();
+
 });
+
 
 function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
   return new Promise(async (resolve, reject) => {
     const archive = archiver("zip", {
       zlib: { level: 0 }, // Sets the compression level.
     });
-
-    targetStream.on("close", function () {
+    targetStream.on("close", function() {
       targetStream.end();
     });
-
     targetStream.on("finish", () => {
       const size = archive.pointer();
       resolve(size);
       console.log(size + " after archiving total bytes - finish -");
     });
-
     archive.pipe(targetStream);
-
     if (!isFake) {
       const totalSources = sourceStreams.length;
       archive.on("progress", async (progress) => {
@@ -149,9 +149,6 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
       await updateSource(sourceStreams[0]);
       appendToArchive(archive, sourceStreams[0]);
     } else {
-      // archive.on("progress", () => {
-      //   origRes.write("*");
-      // });
       sourceStreams.forEach((source) => {
         appendToArchive(archive, source);
       });
@@ -209,7 +206,6 @@ async function updateSource(source) {
     axiosErrorLogger(error);
   }
 }
-
 function appendToArchive(archive, source) {
   archive.append(source.data, {
     prefix: source.path || null,
@@ -217,6 +213,7 @@ function appendToArchive(archive, source) {
   });
   // archive.directory()
 }
+
 
 function setHeaders(archiveName, totalSize, response) {
   response.setHeader(
@@ -233,15 +230,12 @@ function setHeaders(archiveName, totalSize, response) {
   response.setHeader("X-Firefox-Spdy", "h2");
   response.setHeader("Connection", "keep-alive");
 }
-
 http.createServer(server).listen(80, () => {
   console.log("HTTP listening on 80");
 });
-
 https.createServer(options, server).listen(443, () => {
   console.log("HTTPS listening on 443");
 });
-
 function axiosErrorLogger(error) {
   console.log(new Date());
   if (error.response) {
