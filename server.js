@@ -5,7 +5,6 @@ const server = express();
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
-const StreamArchiver = require("stream-archiver");
 const FakeSource = require("./FakeSource");
 const FakeOutsource = require("./FakeOutsource");
 
@@ -105,18 +104,8 @@ server.get("/archive", async (req, res) => {
     }))
     .filter((source) => !!source.link);
   const archiveName = sources[0]["path"].split("/")[0];
-  const arr = sources.map((file) => ({ fileNameWithExt: `${file.path}/${file.filename}`, url: file.link }));
-  const streamArchiver = new StreamArchiver(
-    'zip',
-    undefined,
-    2,
-    [{ stream: res }],
-    arr,
-    true
-  );
   setHeaders(archiveName, totalSize, res);
-
-  await streamArchiver.process();
+  await downloadAsZip(sources, res, false);
 
 });
 
