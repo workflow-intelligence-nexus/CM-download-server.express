@@ -18,6 +18,8 @@ const whitelist = [
   "https://hecho.netlify.app",
   "https://cm.hechostudios.com",
   "https://cm-transfer.hechostudios.com",
+  "https://collection-microsite-dev.netlify.app",
+
 ];
 const filesDictionary = {};
 
@@ -149,9 +151,6 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
       await updateSource(sourceStreams[0]);
       appendToArchive(archive, sourceStreams[0]);
     } else {
-      // archive.on("progress", () => {
-      //   origRes.write("*");
-      // });
       sourceStreams.forEach((source) => {
         appendToArchive(archive, source);
       });
@@ -215,7 +214,6 @@ function appendToArchive(archive, source) {
     prefix: source.path || null,
     name: source.filename,
   });
-  // archive.directory()
 }
 
 function setHeaders(archiveName, totalSize, response) {
