@@ -2,24 +2,24 @@ const express = require("express");
 const archiver = require("archiver");
 const axios = require("axios");
 const server = express();
+const fs = require("fs");
 const http = require("http");
 const https = require("https");
-const fs = require("fs");
 const FakeSource = require("./FakeSource");
 const FakeOutsource = require("./FakeOutsource");
 
 const options = {
-  key: fs.readFileSync("/etc/ssl/cloudflare/hechostudios.com.privkey.pem"),
-  cert: fs.readFileSync("/etc/ssl/cloudflare/hechostudios.com.cert.pem"),
+  key: fs.readFileSync("./private.key.pem"),
+  cert: fs.readFileSync("./domain.cert.pem"),
 };
+
 
 const whitelist = [
   "http://localhost:4200",
   "https://hecho.netlify.app",
   "https://cm.hechostudios.com",
   "https://cm-transfer.hechostudios.com",
-  "https://collection-microsite-dev.netlify.app",
-
+  "https://collection-microsite-dev.netlify.app"
 ];
 const filesDictionary = {};
 
@@ -125,7 +125,7 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
       zlib: { level: 0 }, // Sets the compression level.
     });
 
-    targetStream.on("close", function () {
+    targetStream.on("close", function() {
       targetStream.end();
     });
 
@@ -204,7 +204,6 @@ async function updateSource(source) {
     source.data = data;
     return Promise.resolve();
   } catch (error) {
-    console.log("UPDATE SOURCE ERROR");
     axiosErrorLogger(error);
   }
 }
