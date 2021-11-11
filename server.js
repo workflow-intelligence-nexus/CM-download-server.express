@@ -9,8 +9,8 @@ const FakeSource = require("./FakeSource");
 const FakeOutsource = require("./FakeOutsource");
 
 const options = {
-  key: fs.readFileSync("./private.key.pem"),
-  cert: fs.readFileSync("./domain.cert.pem"),
+  key: fs.readFileSync("/etc/pki/nginx/private/private.key.pem"),
+  cert: fs.readFileSync("/etc/pki/nginx/private/domain.cert.pem"),
 };
 
 
@@ -151,6 +151,9 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
       await updateSource(sourceStreams[0]);
       appendToArchive(archive, sourceStreams[0]);
     } else {
+      // archive.on("progress", () => {
+      //   origRes.write("*");
+      // });
       sourceStreams.forEach((source) => {
         appendToArchive(archive, source);
       });
@@ -213,6 +216,7 @@ function appendToArchive(archive, source) {
     prefix: source.path || null,
     name: source.filename,
   });
+  // archive.directory()
 }
 
 function setHeaders(archiveName, totalSize, response) {
@@ -231,12 +235,8 @@ function setHeaders(archiveName, totalSize, response) {
   response.setHeader("Connection", "keep-alive");
 }
 
-http.createServer(server).listen(80, () => {
-  console.log("HTTP listening on 80");
-});
-
-https.createServer(options, server).listen(443, () => {
-  console.log("HTTPS listening on 443");
+https.createServer(options, server).listen(8080, () => {
+  console.log("HTTPS listening on  8080");
 });
 
 function axiosErrorLogger(error) {
