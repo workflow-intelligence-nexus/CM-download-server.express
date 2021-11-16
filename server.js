@@ -155,7 +155,9 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
       //   origRes.write("*");
       // });
       sourceStreams.forEach((source) => {
-        appendToArchive(archive, source);
+        if (source) {
+          appendToArchive(archive, source);
+        }
       });
       archive.finalize();
     }
