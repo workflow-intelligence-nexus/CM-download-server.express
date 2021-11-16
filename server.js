@@ -171,7 +171,7 @@ async function getSourcesInfo(files) {
         let response = {};
         let length;
         try {
-          if (file.link) {
+          if (file.link && file.link !== 'empty') {
             response = await axios(file.link, {
               responseType: "stream",
               httpAgent: new http.Agent({ keepAlive: true }),
@@ -214,6 +214,7 @@ async function updateSource(source) {
 }
 
 function appendToArchive(archive, source) {
+
   archive.append(source.data, {
     prefix: source.path || null,
     name: source.filename,
