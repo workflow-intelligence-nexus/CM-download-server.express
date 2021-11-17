@@ -1,24 +1,21 @@
 const express = require("express");
+const CollectionMicrositeService = require("./collectionMicrosite.service.js");
+require('dotenv').config({ path: __dirname + '/config/.env' });
+const server = express();
 const archiver = require("archiver");
 const axios = require("axios");
-const server = express();
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
-const FakeSource = require("./FakeSource");
-const FakeOutsource = require("./FakeOutsource");
+const FakeSource = require("./FakeSource.js");
+const FakeOutsource = require("./FakeOutsource.js");
 
 const options = {
-  key: fs.readFileSync("/etc/ssl/cloudflare/hechostudios.com.privkey.pem"),
-  cert: fs.readFileSync("/etc/ssl/cloudflare/hechostudios.com.cert.pem"),
+  key: process.env.PRIVATE_KEY ? fs.readFileSync(process.env.PRIVATE_KEY) : '',
+  cert: process.env.CERTIFICATE ? fs.readFileSync(process.env.CERTIFICATE) : '',
 };
 
-const whitelist = [
-  "http://localhost:4200",
-  "https://hecho.netlify.app",
-  "https://cm.hechostudios.com",
-  "https://cm-transfer.hechostudios.com",
-];
+const whitelist = process.env.WHITELIST;
 const filesDictionary = {};
 
 server.use(express.json());
@@ -70,9 +67,37 @@ server.post("/source-files", (req, res) => {
   }
 });
 
+server.post("/update-assets-sources", async (req, res) => {
+  const assetsIds = req.body;
+  const data = await Promise.all(
+    assetsIds.map(async (assetId) => {
+      const assetUrls = await getAssetSourcesUrls(assetId);
+      return {
+        assetId,
+        ...assetUrls,
+      };
+    })
+  );
+  console.log('update assets response', data);
+  res.end(JSON.stringify(data));
+})
+
+server.post("/get-assets-origin-url", async (req, res) => {
+  const assetsIds = req.body;
+  const service = new CollectionMicrositeService();
+  const data = await Promise.all(
+    assetsIds.map(async (assetId) => ({
+      assetId,
+      sourceURL: await service.getOriginSourceUrl(assetId),
+    }))
+  );
+  console.log('get assets origin url response', data);
+  res.end(JSON.stringify(data));
+});
+
 server.get("/sources-size", async (req, res) => {
   const siteId = req.query && req.query.siteId;
-  const files = filesDictionary[siteId].filter((file) => !!file.link);
+  const files = filesDictionary[siteId].filter((file) => !!file.link && file.link !== 'empty');
   if (!siteId || !files) {
     res.sendStatus(400).end();
     return;
@@ -105,17 +130,25 @@ server.get("/archive", async (req, res) => {
 
   const sources = files
     .map((file) => ({
-      data: null,
-      filename: file.name,
-      path: file.path,
-      link: file.link,
-    }))
-    .filter((source) => !!source.link);
+        data: null,
+        filename: file.name,
+        path: file.path,
+        link: file.link,
+      }
+    ))
+      .filter((source) => !!source.link && source.link !== 'empty');
 
   const archiveName = sources[0]["path"].split("/")[0];
   setHeaders(archiveName, totalSize, res);
   await downloadAsZip(sources, res, false);
 });
+
+async function getAssetSourcesUrls(assetId) {
+  const service = new CollectionMicrositeService();
+  const response = await service.getAssetUrls(assetId);
+  console.log('get asset sources urls response', response);
+  return response;
+}
 
 function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
   return new Promise(async (resolve, reject) => {
@@ -123,7 +156,7 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
       zlib: { level: 0 }, // Sets the compression level.
     });
 
-    targetStream.on("close", function () {
+    targetStream.on("close", function() {
       targetStream.end();
     });
 
@@ -153,7 +186,9 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
       //   origRes.write("*");
       // });
       sourceStreams.forEach((source) => {
-        appendToArchive(archive, source);
+        if (source) {
+          appendToArchive(archive, source);
+        }
       });
       archive.finalize();
     }
@@ -167,7 +202,7 @@ async function getSourcesInfo(files) {
         let response = {};
         let length;
         try {
-          if (file.link) {
+          if (file.link && file.link !== 'empty') {
             response = await axios(file.link, {
               responseType: "stream",
               httpAgent: new http.Agent({ keepAlive: true }),
@@ -211,6 +246,7 @@ async function updateSource(source) {
 }
 
 function appendToArchive(archive, source) {
+
   archive.append(source.data, {
     prefix: source.path || null,
     name: source.filename,
@@ -238,9 +274,15 @@ http.createServer(server).listen(80, () => {
   console.log("HTTP listening on 80");
 });
 
-https.createServer(options, server).listen(443, () => {
-  console.log("HTTPS listening on 443");
-});
+if (options.key && options.cert) {
+  https.createServer(options, server).listen(443, () => {
+    console.log("HTTPS listening on 443");
+  });
+} else {
+  https.createServer(server).listen(443, () => {
+    console.log("HTTPS listening on 443");
+  });
+}
 
 function axiosErrorLogger(error) {
   console.log(new Date());
