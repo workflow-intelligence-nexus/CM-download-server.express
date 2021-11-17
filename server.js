@@ -74,7 +74,7 @@ server.post("/source-files", (req, res) => {
 
 server.get("/sources-size", async (req, res) => {
   const siteId = req.query && req.query.siteId;
-  const files = filesDictionary[siteId].filter((file) => !!file.link);
+  const files = filesDictionary[siteId].filter((file) => !!file.link && file.link !== 'empty');
   if (!siteId || !files) {
     res.sendStatus(400).end();
     return;
@@ -112,7 +112,7 @@ server.get("/archive", async (req, res) => {
       path: file.path,
       link: file.link,
     }))
-    .filter((source) => !!source.link);
+    .filter((source) => !!source.link && source.link !== 'empty');
 
   const archiveName = sources[0]["path"].split("/")[0];
   setHeaders(archiveName, totalSize, res);
