@@ -8,11 +8,6 @@ module.exports = class CollectionMicrositeService {
   }
 
   async getAssetUrls(assetId) {
-    const assetURLS = {
-      proxyURL: '',
-      keyframeURL: '',
-      sourceURL: '',
-    };
 
     try {
       const [proxy, keyframes, sourceURL] = await Promise.all([
@@ -21,16 +16,18 @@ module.exports = class CollectionMicrositeService {
         this.getOriginSourceUrl(assetId)]);
       const proxyURL = proxy.objects[0]?.url || '';
       const keyframeURL = keyframes.objects?.find((keyframe) => keyframe.type === 'KEYFRAME')?.url || '';
-
-      console.log('keyframe url', keyframeURL);
       return {
         proxyURL,
-        sourceURL,
         keyframeURL,
+        sourceURL,
       };
     } catch (error) {
       console.log(`Asset(${assetId}) has not been updated`);
-      return assetURLS;
+      return {
+        proxyURL: '',
+        keyframeURL: '',
+        sourceURL: 'empty'
+      };
     }
   }
 
@@ -41,11 +38,16 @@ module.exports = class CollectionMicrositeService {
       const assetFiles = await this.iconik.files.getFilesOfAssetById(assetId, {
         generate_signed_url: true,
       });
-      const originalFile = assetFiles.objects.find((asset) => asset.format_id === originalFormat?.id && asset.url);
-      console.log('asset & url', assetId, originalFile.url);
+      console.log("ASSETS", assetFiles);
+      const originalFile = assetFiles.objects.find((asset) => {
+
+        return asset.format_id === originalFormat?.id && asset.url
+      });
+      console.log('asset & url', assetId, originalFile?.url);
       return originalFile?.url ? originalFile.url : 'empty';
 
     } catch (error) {
+      console.log("SOURCE", error);
       console.log(`Asset(${assetId}) has not been updated`);
       return '';
     }
