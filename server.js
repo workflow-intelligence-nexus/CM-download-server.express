@@ -49,6 +49,13 @@ server.all("/*", (req, res, next) => {
   next();
 });
 
+/**
+ * For ALB health check
+ */
+server.get("/", (req, res) => {
+  res.sendStatus(200).end();
+});
+
 server.post("/source-files", (req, res) => {
   const body = req.body;
   if (Object.keys(body).length != 0 && body.constructor === Object) {
