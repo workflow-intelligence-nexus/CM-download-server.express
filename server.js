@@ -2,24 +2,16 @@ const express = require("express");
 const archiver = require("archiver");
 const axios = require("axios");
 const server = express();
-const fs = require("fs");
-const http = require("http");
-const https = require("https");
 const FakeSource = require("./FakeSource");
 const FakeOutsource = require("./FakeOutsource");
-
-const options = {
-  key: fs.readFileSync("/etc/pki/nginx/private/private.key.pem"),
-  cert: fs.readFileSync("/etc/pki/nginx/private/domain.cert.pem"),
-};
-
 
 const whitelist = [
   "http://localhost:4200",
   "https://hecho.netlify.app",
   "https://cm.hechostudios.com",
   "https://cm-transfer.hechostudios.com",
-  "https://collection-microsite-dev.netlify.app"
+  "https://collection-microsite-dev.netlify.app",
+  "https://cm-dev.wintoolset.net"
 ];
 const filesDictionary = {};
 
@@ -27,20 +19,26 @@ server.use(express.json());
 
 server.all("/*", (req, res, next) => {
   const origin = req.headers.origin;
-  if (whitelist.indexOf(origin) != -1) {
+  if (whitelist.indexOf(origin) !== -1) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
   res.setHeader("Access-Control-Allow-Headers", [
+    "Accept",
+    "Accept-Encoding",
+    "Accept-Language",
+    "Access-Control-Request-Headers",
+    "Access-Control-Request-Method",
+    "Connection",
+    "Host",
+    "Origin",
+    "Referer",
+    "Sec-Fetch-Dest",
+    "Sec-Fetch-Mode",
+    "Sec-Fetch-Site",
+    "User-Agent",
     "Content-Type",
     "X-Requested-With",
     "X-HTTP-Method-Override",
-    "Accept",
-  ]);
-  res.setHeader("Access-Control-Allow-Headers", [
-    "Content-Type",
-    "X-Requested-With",
-    "X-HTTP-Method-Override",
-    "Accept",
   ]);
   res.setHeader("Access-Control-Allow-Credentials", true);
   res.setHeader("Access-Control-Allow-Methods", "GET,POST");
@@ -56,7 +54,7 @@ server.all("/*", (req, res, next) => {
 
 server.post("/source-files", (req, res) => {
   const body = req.body;
-  if (Object.keys(body).length != 0 && body.constructor === Object) {
+  if (Object.keys(body).length !== 0 && body.constructor === Object) {
     const filesBatchId = Object.keys(body)[0];
     if (filesDictionary[filesBatchId]) {
       filesDictionary[filesBatchId] = [
@@ -71,6 +69,8 @@ server.post("/source-files", (req, res) => {
     res.sendStatus(400).end();
   }
 });
+
+server.get("/health-check", (req, res) => res.status(200).send());
 
 server.get("/sources-size", async (req, res) => {
   const siteId = req.query && req.query.siteId;
@@ -120,7 +120,7 @@ server.get("/archive", async (req, res) => {
 });
 
 function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
-  return new Promise(async (resolve, reject) => {
+  return new Promise(async (resolve) => {
     const archive = archiver("zip", {
       zlib: { level: 0 }, // Sets the compression level.
     });
@@ -238,8 +238,8 @@ function setHeaders(archiveName, totalSize, response) {
   response.setHeader("Connection", "keep-alive");
 }
 
-https.createServer(options, server).listen(8080, () => {
-  console.log("HTTPS listening on  8080");
+server.listen(8080, () => {
+  console.log("HTTP listening on  8080");
 });
 
 function axiosErrorLogger(error) {

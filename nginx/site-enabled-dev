@@ -1,0 +1,22 @@
+server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+        root /var/www/html;
+        # Add index.php to the list if you are using PHP
+        index index.html index.htm index.nginx-debian.html;
+        server_name _;
+       if ($host = 'collection-microsite.wintoolset.net') {
+                return 301 https://$host;
+        }
+}
+server {
+         listen 443 ssl;
+         listen [::]:443 ssl;
+         ssl on;
+         server_name collection-microsite.wintoolset.net;
+        ssl_certificate "/etc/pki/nginx/private/domain.cert.pem";
+        ssl_certificate_key "/etc/pki/nginx/private/private.key.pem";
+        location / {
+                proxy_pass http://localhost:8080;
+        }
+}
