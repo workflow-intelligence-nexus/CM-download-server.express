@@ -88,7 +88,7 @@ server.get("/sources-size", async (req, res) => {
     res.status(400).send(`Bad request`).end();
   }
   const fakeTarget = new FakeOutsource();
-  const totalSize = await downloadAsZip(sources, fakeTarget, res, false);
+  const totalSize = await downloadAsZip(sources, fakeTarget, res, true);
   res.end(totalSize.toString());
 });
 
