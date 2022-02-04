@@ -214,6 +214,7 @@ async function updateSource(source) {
 }
 
 function appendToArchive(archive, source) {
+  console.log('appendToArchive, source', source);
 
   archive.append(source.data, {
     prefix: source.path || null,
