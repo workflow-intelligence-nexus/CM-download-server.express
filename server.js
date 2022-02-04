@@ -214,11 +214,11 @@ async function updateSource(source) {
 }
 
 function appendToArchive(archive, source) {
-  // archive.append(source.data, {
-  //   prefix: source.path || null,
-  //   name: source.filename,
-  // });
-  archive.directory()
+  archive.append(source.data, {
+    prefix: source.path || null,
+    name: source.filename,
+  });
+  // archive.directory()
 }
 
 function setHeaders(archiveName, totalSize, response) {
