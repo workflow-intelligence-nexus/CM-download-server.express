@@ -165,11 +165,12 @@ async function getAssetSourcesUrls(assetId) {
 
 function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
     return new Promise(async (resolve, reject) => {
+      try {
       const archive = archiver("zip", {
         zlib: {level: 0}, // Sets the compression level.
       });
       const archiveName = sourceStreams[0]["path"].split("/")[0];
-      const filesNames = sourceStreams.map((file)=>{
+      const filesNames = sourceStreams.map((file) => {
         return file.filename
 
       })
@@ -200,7 +201,6 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
             archive.finalize();
           }
         });
-        setTimeout(()=>{reject({error:'Server stop error', zipInfo: zipInfo})}, 20000);
         await updateSource(sourceStreams[0]);
         appendToArchive(archive, sourceStreams[0]);
       } else {
@@ -213,6 +213,9 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
           }
         });
         archive.finalize();
+      }
+    } catch (error) {
+        reject({error: 'Server stop error', zipInfo: zipInfo})
       }
     }).catch((errorData)=>{
       const service = new CollectionMicrositeService();
