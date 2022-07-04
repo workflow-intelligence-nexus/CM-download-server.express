@@ -9,7 +9,6 @@ const https = require("https");
 const fs = require("fs");
 const FakeSource = require("./FakeSource.js");
 const FakeOutsource = require("./FakeOutsource.js");
-const Helper = require("./helper/helper");
 
 const options = {
   key: process.env.PRIVATE_KEY ? fs.readFileSync(process.env.PRIVATE_KEY) : '',
@@ -124,7 +123,6 @@ server.get("/sources-size", async (req, res) => {
 });
 
 server.get("/archive", async (req, res) => {
-  try {
     const siteId = req.query && req.query.siteId;
     const totalSize =
       req.query.totalSize && req.query.totalSize.replace(/\*/g, "");
@@ -150,10 +148,6 @@ server.get("/archive", async (req, res) => {
     const archiveName = sources[0]["path"].split("/")[0];
     setHeaders(archiveName, totalSize, res);
     await downloadAsZip(sources, res, false);
-  } catch (error) {
-    console.log('Error 999 = ', error);
-
-  }
 });
 
 async function getAssetSourcesUrls(assetId) {
@@ -166,6 +160,7 @@ async function getAssetSourcesUrls(assetId) {
 function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
     return new Promise(async (resolve, reject) => {
       try {
+        setTimeout(()=>{reject('stop server 2')},20000);
       const archive = archiver("zip", {
         zlib: {level: 0}, // Sets the compression level.
       });
