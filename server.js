@@ -9,6 +9,7 @@ const https = require("https");
 const fs = require("fs");
 const FakeSource = require("./FakeSource.js");
 const FakeOutsource = require("./FakeOutsource.js");
+const Helper = require("./helper/helper");
 
 const options = {
   key: process.env.PRIVATE_KEY ? fs.readFileSync(process.env.PRIVATE_KEY) : '',
@@ -123,31 +124,36 @@ server.get("/sources-size", async (req, res) => {
 });
 
 server.get("/archive", async (req, res) => {
-  const siteId = req.query && req.query.siteId;
-  const totalSize =
-    req.query.totalSize && req.query.totalSize.replace(/\*/g, "");
-  const files = filesDictionary[siteId];
+  try {
+    const siteId = req.query && req.query.siteId;
+    const totalSize =
+      req.query.totalSize && req.query.totalSize.replace(/\*/g, "");
+    const files = filesDictionary[siteId];
 
-  if (!siteId || !files || !totalSize) {
-    res.sendStatus(400).end();
-    return;
-  }
+    if (!siteId || !files || !totalSize) {
+      res.sendStatus(400).end();
+      return;
+    }
 
-  delete filesDictionary[siteId];
+    delete filesDictionary[siteId];
 
-  const sources = files
-    .map((file) => ({
-        data: null,
-        filename: file.name,
-        path: file.path,
-        link: file.link,
-      }
-    ))
+    const sources = files
+      .map((file) => ({
+          data: null,
+          filename: file.name,
+          path: file.path,
+          link: file.link,
+        }
+      ))
       .filter((source) => !!source.link && source.link !== 'empty');
 
-  const archiveName = sources[0]["path"].split("/")[0];
-  setHeaders(archiveName, totalSize, res);
-  await downloadAsZip(sources, res, false);
+    const archiveName = sources[0]["path"].split("/")[0];
+    setHeaders(archiveName, totalSize, res);
+    await downloadAsZip(sources, res, false);
+  } catch (error) {
+    console.log('Error 999 = ', error);
+
+  }
 });
 
 async function getAssetSourcesUrls(assetId) {
@@ -158,48 +164,62 @@ async function getAssetSourcesUrls(assetId) {
 }
 
 function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
-  return new Promise(async (resolve, reject) => {
-    const archive = archiver("zip", {
-      zlib: { level: 0 }, // Sets the compression level.
-    });
-
-    targetStream.on("close", function() {
-      targetStream.end();
-    });
-
-    targetStream.on("finish", () => {
-      const size = archive.pointer();
-      resolve(size);
-      console.log(size + " after archiving total bytes - finish -");
-    });
-
-    archive.pipe(targetStream);
-
-    if (!isFake) {
-      const totalSources = sourceStreams.length;
-      archive.on("progress", async (progress) => {
-        let processedItems = progress.entries.processed;
-        if (processedItems < totalSources) {
-          await updateSource(sourceStreams[processedItems]);
-          appendToArchive(archive, sourceStreams[processedItems]);
-        } else {
-          archive.finalize();
-        }
+    return new Promise(async (resolve, reject) => {
+      const archive = archiver("zip", {
+        zlib: {level: 0}, // Sets the compression level.
       });
-      await updateSource(sourceStreams[0]);
-      appendToArchive(archive, sourceStreams[0]);
-    } else {
-      // archive.on("progress", () => {
-      //   origRes.write("*");
-      // });
-      sourceStreams.forEach((source) => {
-        if (source) {
-          appendToArchive(archive, source);
-        }
+      const archiveName = sourceStreams[0]["path"].split("/")[0];
+      const filesNames = sourceStreams.map((file)=>{
+        return file.filename
+
+      })
+      const zipInfo = {
+        archiveName,
+        files: filesNames,
+      }
+      targetStream.on("close", function () {
+        targetStream.end();
       });
-      archive.finalize();
-    }
-  });
+
+      targetStream.on("finish", () => {
+        const size = archive.pointer();
+        resolve(size);
+        console.log(size + " after archiving total bytes - finish -");
+      });
+
+      archive.pipe(targetStream);
+
+      if (!isFake) {
+        const totalSources = sourceStreams.length;
+        archive.on("progress", async (progress) => {
+          let processedItems = progress.entries.processed;
+          if (processedItems < totalSources) {
+            await updateSource(sourceStreams[processedItems]);
+            appendToArchive(archive, sourceStreams[processedItems]);
+          } else {
+            archive.finalize();
+          }
+        });
+        setTimeout(()=>{reject({error:'Server stop error', zipInfo: zipInfo})}, 20000);
+        await updateSource(sourceStreams[0]);
+        appendToArchive(archive, sourceStreams[0]);
+      } else {
+        // archive.on("progress", () => {
+        //   origRes.write("*");
+        // });
+        sourceStreams.forEach((source) => {
+          if (source) {
+            appendToArchive(archive, source);
+          }
+        });
+        archive.finalize();
+      }
+    }).catch((errorData)=>{
+      const service = new CollectionMicrositeService();
+      service.createJob({error_message: `Collection microsite server error when uploading zip. ERROR: ${errorData.error}, ZIP INFO: ${JSON.stringify(errorData.zipInfo)}.`, status: 'FAILED', title: 'Archive server', progress_processed: 100, type: 'CUSTOM'}).then( ()=>{
+        console.log(errorData.error);
+      });
+    });
 }
 
 async function getSourcesInfo(files) {
