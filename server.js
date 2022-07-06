@@ -1,6 +1,6 @@
 const express = require("express");
 const CollectionMicrositeService = require("./collectionMicrosite.service.js");
-require('dotenv').config({path: __dirname + '/config/.env'});
+require('dotenv').config({ path: __dirname + '/config/.env' });
 const server = express();
 const archiver = require("archiver");
 const axios = require("axios");
@@ -123,31 +123,31 @@ server.get("/sources-size", async (req, res) => {
 });
 
 server.get("/archive", async (req, res) => {
-    const siteId = req.query && req.query.siteId;
-    const totalSize =
-      req.query.totalSize && req.query.totalSize.replace(/\*/g, "");
-    const files = filesDictionary[siteId];
+  const siteId = req.query && req.query.siteId;
+  const totalSize =
+    req.query.totalSize && req.query.totalSize.replace(/\*/g, "");
+  const files = filesDictionary[siteId];
 
-    if (!siteId || !files || !totalSize) {
-      res.sendStatus(400).end();
-      return;
-    }
+  if (!siteId || !files || !totalSize) {
+    res.sendStatus(400).end();
+    return;
+  }
 
-    delete filesDictionary[siteId];
+  delete filesDictionary[siteId];
 
-    const sources = files
-      .map((file) => ({
-          data: null,
-          filename: file.name,
-          path: file.path,
-          link: file.link,
-        }
-      ))
-      .filter((source) => !!source.link && source.link !== 'empty');
+  const sources = files
+    .map((file) => ({
+        data: null,
+        filename: file.name,
+        path: file.path,
+        link: file.link,
+      }
+    ))
+    .filter((source) => !!source.link && source.link !== 'empty');
 
-    const archiveName = sources[0]["path"].split("/")[0];
-    setHeaders(archiveName, totalSize, res);
-    await downloadAsZip(sources, res, false);
+  const archiveName = sources[0]["path"].split("/")[0];
+  setHeaders(archiveName, totalSize, res);
+  await downloadAsZip(sources, res, false);
 });
 
 async function getAssetSourcesUrls(assetId) {
@@ -170,9 +170,9 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
     }
     try {
       const archive = archiver("zip", {
-        zlib: {level: 0}, // Sets the compression level.
+        zlib: { level: 0 }, // Sets the compression level.
       });
-      targetStream.on("close", function () {
+      targetStream.on("close", function() {
         targetStream.end();
       });
 
@@ -209,7 +209,7 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
         archive.finalize();
       }
     } catch (error) {
-      reject({error: error.message, zipInfo:zipInfo})
+      reject({ error: error.message, zipInfo: zipInfo })
     }
   }).catch((errorData) => {
     const service = new CollectionMicrositeService();
