@@ -1,6 +1,6 @@
 const express = require("express");
 const CollectionMicrositeService = require("./collectionMicrosite.service.js");
-require('dotenv').config({ path: __dirname + '/config/.env' });
+require('dotenv').config({path: __dirname + '/config/.env'});
 const server = express();
 const archiver = require("archiver");
 const axios = require("axios");
@@ -158,21 +158,20 @@ async function getAssetSourcesUrls(assetId) {
 }
 
 function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
-    return new Promise(async (resolve, reject) => {
-      try {
-        setTimeout(()=>{reject('stop server 2')},20000);
+  return new Promise(async (resolve, reject) => {
+    const archiveName = sourceStreams[0]["path"].split("/")[0];
+    const filesNames = sourceStreams.map((file) => {
+      return file.filename
+
+    })
+    const zipInfo = {
+      archiveName,
+      files: filesNames,
+    }
+    try {
       const archive = archiver("zip", {
         zlib: {level: 0}, // Sets the compression level.
       });
-      const archiveName = sourceStreams[0]["path"].split("/")[0];
-      const filesNames = sourceStreams.map((file) => {
-        return file.filename
-
-      })
-      const zipInfo = {
-        archiveName,
-        files: filesNames,
-      }
       targetStream.on("close", function () {
         targetStream.end();
       });
@@ -210,14 +209,20 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
         archive.finalize();
       }
     } catch (error) {
-        reject({error: 'Server stop error', zipInfo: zipInfo})
-      }
-    }).catch((errorData)=>{
-      const service = new CollectionMicrositeService();
-      service.createJob({error_message: `Collection microsite server error when uploading zip. ERROR: ${errorData.error}, ZIP INFO: ${JSON.stringify(errorData.zipInfo)}.`, status: 'FAILED', title: 'Archive server', progress_processed: 100, type: 'CUSTOM'}).then( ()=>{
-        console.log(errorData.error);
-      });
+      reject({error: error.message, zipInfo:zipInfo})
+    }
+  }).catch((errorData) => {
+    const service = new CollectionMicrositeService();
+    service.createJob({
+      error_message: `Collection microsite server error when uploading zip. ERROR: ${errorData.error}, ZIP INFO: ${JSON.stringify(errorData.zipInfo)}.`,
+      status: 'FAILED',
+      title: 'Archive server',
+      progress_processed: 100,
+      type: 'CUSTOM'
+    }).then(() => {
+      console.log(errorData.error);
     });
+  });
 }
 
 async function getSourcesInfo(files) {
