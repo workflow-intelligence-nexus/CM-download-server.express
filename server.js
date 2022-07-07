@@ -214,10 +214,8 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
         });
         archive.finalize();
       }
-      throw new Error('Custom Error for test');
     } catch (error) {
       reject({ error: error.message, zipInfo: zipInfo })
-      targetStream.destroy()
     }
   }).catch((errorData) => {
     const service = new CollectionMicrositeService();
