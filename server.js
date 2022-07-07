@@ -153,7 +153,11 @@ server.get("/archive", async (req, res) => {
 
   const archiveName = sources[0]["path"].split("/")[0];
   setHeaders(archiveName, totalSize, res);
-  await downloadAsZip(sources, res, false);
+  await downloadAsZip(sources, res, false).catch((error)=>{
+    res.sendStatus(500);
+    res.message(error);
+    res.end();
+  });
 });
 
 async function getAssetSourcesUrls(assetId) {
@@ -165,16 +169,21 @@ async function getAssetSourcesUrls(assetId) {
 
 function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
   return new Promise(async (resolve, reject) => {
-    const archiveName = sourceStreams[0]["path"].split("/")[0];
-    const filesNames = sourceStreams.map((file) => {
-      return file.filename
-
-    })
-    const zipInfo = {
-      archiveName,
-      files: filesNames,
-    }
+    let archiveName;
+    let filesNames;
+    let zipInfo;
     try {
+      archiveName = sourceStreams[0]["path"].split("/")[0];
+      filesNames = sourceStreams.map((file) => {
+        if(file) {
+          return file.filename
+        }
+      })
+       zipInfo = {
+        archiveName,
+        files: filesNames,
+      }
+
       const archive = archiver("zip", {
         zlib: { level: 0 }, // Sets the compression level.
       });
