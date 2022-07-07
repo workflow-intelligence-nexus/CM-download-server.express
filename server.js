@@ -119,7 +119,13 @@ server.get("/sources-size", async (req, res) => {
   }
   const fakeTarget = new FakeOutsource();
   const totalSize = await downloadAsZip(sources, fakeTarget, res, true);
-  res.end(totalSize.toString());
+  if(!totalSize){
+    res.sendStatus(500);
+    res.end();
+  }
+  else{
+    res.end(totalSize.toString());
+  }
 });
 
 server.get("/archive", async (req, res) => {
@@ -208,8 +214,10 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
         });
         archive.finalize();
       }
+      throw new Error('Custom Error for test');
     } catch (error) {
       reject({ error: error.message, zipInfo: zipInfo })
+      targetStream.destroy()
     }
   }).catch((errorData) => {
     const service = new CollectionMicrositeService();
