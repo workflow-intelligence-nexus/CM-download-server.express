@@ -143,7 +143,7 @@ server.get("/archive", async (req, res) => {
         link: file.link,
       }
     ))
-      .filter((source) => !!source.link && source.link !== 'empty');
+    .filter((source) => !!source.link && source.link !== 'empty');
 
   const archiveName = sources[0]["path"].split("/")[0];
   setHeaders(archiveName, totalSize, res);
@@ -159,46 +159,69 @@ async function getAssetSourcesUrls(assetId) {
 
 function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
   return new Promise(async (resolve, reject) => {
-    const archive = archiver("zip", {
-      zlib: { level: 0 }, // Sets the compression level.
-    });
+    const archiveName = sourceStreams[0]["path"].split("/")[0];
+    const filesNames = sourceStreams.map((file) => {
+      return file.filename
 
-    targetStream.on("close", function() {
-      targetStream.end();
-    });
-
-    targetStream.on("finish", () => {
-      const size = archive.pointer();
-      resolve(size);
-      console.log(size + " after archiving total bytes - finish -");
-    });
-
-    archive.pipe(targetStream);
-
-    if (!isFake) {
-      const totalSources = sourceStreams.length;
-      archive.on("progress", async (progress) => {
-        let processedItems = progress.entries.processed;
-        if (processedItems < totalSources) {
-          await updateSource(sourceStreams[processedItems]);
-          appendToArchive(archive, sourceStreams[processedItems]);
-        } else {
-          archive.finalize();
-        }
-      });
-      await updateSource(sourceStreams[0]);
-      appendToArchive(archive, sourceStreams[0]);
-    } else {
-      // archive.on("progress", () => {
-      //   origRes.write("*");
-      // });
-      sourceStreams.forEach((source) => {
-        if (source) {
-          appendToArchive(archive, source);
-        }
-      });
-      archive.finalize();
+    })
+    const zipInfo = {
+      archiveName,
+      files: filesNames,
     }
+    try {
+      const archive = archiver("zip", {
+        zlib: { level: 0 }, // Sets the compression level.
+      });
+      targetStream.on("close", function() {
+        targetStream.end();
+      });
+
+      targetStream.on("finish", () => {
+        const size = archive.pointer();
+        resolve(size);
+        console.log(size + " after archiving total bytes - finish -");
+      });
+
+      archive.pipe(targetStream);
+
+      if (!isFake) {
+        const totalSources = sourceStreams.length;
+        archive.on("progress", async (progress) => {
+          let processedItems = progress.entries.processed;
+          if (processedItems < totalSources) {
+            await updateSource(sourceStreams[processedItems]);
+            appendToArchive(archive, sourceStreams[processedItems]);
+          } else {
+            archive.finalize();
+          }
+        });
+        await updateSource(sourceStreams[0]);
+        appendToArchive(archive, sourceStreams[0]);
+      } else {
+        // archive.on("progress", () => {
+        //   origRes.write("*");
+        // });
+        sourceStreams.forEach((source) => {
+          if (source) {
+            appendToArchive(archive, source);
+          }
+        });
+        archive.finalize();
+      }
+    } catch (error) {
+      reject({ error: error.message, zipInfo: zipInfo })
+    }
+  }).catch((errorData) => {
+    const service = new CollectionMicrositeService();
+    service.createJob({
+      error_message: `Collection microsite server error when uploading zip. ERROR: ${errorData.error}, ZIP INFO: ${JSON.stringify(errorData.zipInfo)}.`,
+      status: 'FAILED',
+      title: 'Archive server',
+      progress_processed: 100,
+      type: 'CUSTOM'
+    }).then(() => {
+      console.log(errorData.error);
+    });
   });
 }
 

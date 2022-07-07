@@ -52,4 +52,7 @@ module.exports = class CollectionMicrositeService {
       return '';
     }
   }
+  async createJob(data){
+    await this.iconik.jobs.createJob(data);
+  }
 }
