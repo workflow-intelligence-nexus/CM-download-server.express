@@ -154,8 +154,7 @@ server.get("/archive", async (req, res) => {
   setHeaders(archiveName, totalSize, res);
   await downloadAsZip(sources, res, false).catch((error)=>{
     res.sendStatus(500);
-    res.message(error);
-    res.end();
+    res.message(error).end();
   });
 });
 
