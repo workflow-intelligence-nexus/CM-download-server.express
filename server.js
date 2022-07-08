@@ -120,8 +120,7 @@ server.get("/sources-size", async (req, res) => {
   const fakeTarget = new FakeOutsource();
   const totalSize = await downloadAsZip(sources, fakeTarget, res, true);
   if(!totalSize){
-    res.sendStatus(500);
-    res.end();
+    res.sendStatus(500).end();
   }
   else{
     res.end(totalSize.toString());
