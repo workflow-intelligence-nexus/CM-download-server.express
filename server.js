@@ -9,6 +9,7 @@ const https = require("https");
 const fs = require("fs");
 const FakeSource = require("./FakeSource.js");
 const FakeOutsource = require("./FakeOutsource.js");
+const Helper = require('./helper/helper');
 
 const options = {
   key: process.env.PRIVATE_KEY ? fs.readFileSync(process.env.PRIVATE_KEY) : '',
@@ -19,6 +20,9 @@ const whitelist = process.env.WHITELIST;
 const filesDictionary = {};
 
 server.use(express.json());
+
+const helper = new Helper();
+const iconik = helper.createIconikService({}, { fallbackApps: true, concurrent: 10 });
 
 server.all("/*", (req, res, next) => {
   const origin = req.headers.origin;
@@ -91,7 +95,7 @@ server.post("/update-assets-sources", async (req, res) => {
 
 server.post("/get-assets-origin-url", async (req, res) => {
   const assetsIds = req.body;
-  const service = new CollectionMicrositeService();
+  const service = new CollectionMicrositeService(iconik);
   const data = await Promise.all(
     assetsIds.map(async (assetId) => ({
       assetId,
@@ -159,7 +163,7 @@ server.get("/archive", async (req, res) => {
 });
 
 async function getAssetSourcesUrls(assetId) {
-  const service = new CollectionMicrositeService();
+  const service = new CollectionMicrositeService(iconik);
   const response = await service.getAssetUrls(assetId);
   console.log('get asset sources urls response', response);
   return response;
@@ -225,7 +229,7 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
       reject({ error: error.message, zipInfo: zipInfo })
     }
   }).catch((errorData) => {
-    const service = new CollectionMicrositeService();
+    const service = new CollectionMicrositeService(iconik);
     service.createJob({
       error_message: `Collection microsite server error when uploading zip. ERROR: ${errorData.error}, ZIP INFO: ${JSON.stringify(errorData.zipInfo)}.`,
       status: 'FAILED',
@@ -312,16 +316,16 @@ function setHeaders(archiveName, totalSize, response) {
   response.setHeader("X-Firefox-Spdy", "h2");
   response.setHeader("Connection", "keep-alive");
 }
-
-http.createServer(server).listen(80, () => {
-  console.log("HTTP listening on 80");
+const port = process.env.PORT ? parseInt(process.env.PORT) : 80;
+http.createServer(server).listen(port, () => {
+  console.log("HTTP listening on %s", port);
 });
 
 if (options.key && options.cert) {
   https.createServer(options, server).listen(443, () => {
     console.log("HTTPS listening on 443");
   });
-} else {
+} else if (port === 80) {
   https.createServer(server).listen(443, () => {
     console.log("HTTPS listening on 443");
   });
