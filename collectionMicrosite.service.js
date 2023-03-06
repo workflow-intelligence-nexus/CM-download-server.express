@@ -1,4 +1,3 @@
-const Helper = require('./helper/helper.js');
 const {replaceWithCustomDomain} = require('./helper/s3-uri-util');
 
 module.exports = class CollectionMicrositeService {
