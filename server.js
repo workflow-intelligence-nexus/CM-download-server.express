@@ -2,7 +2,7 @@ const express = require("express");
 const CollectionMicrositeService = require("./collectionMicrosite.service.js");
 require('dotenv').config({ path: __dirname + '/config/.env' });
 const server = express();
-const archiver = require("archiver");
+const AdmZip = require('adm-zip');
 const axios = require("axios");
 const http = require("http");
 const https = require("https");
@@ -29,13 +29,16 @@ server.all("/*", (req, res, next) => {
   if (whitelist.indexOf(origin) != -1) {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
   res.setHeader("Access-Control-Allow-Headers", [
+    "ngrok-skip-browser-warning",
     "Content-Type",
     "X-Requested-With",
     "X-HTTP-Method-Override",
     "Accept",
   ]);
   res.setHeader("Access-Control-Allow-Headers", [
+    "ngrok-skip-browser-warning",
     "Content-Type",
     "X-Requested-With",
     "X-HTTP-Method-Override",
@@ -107,6 +110,7 @@ server.post("/get-assets-origin-url", async (req, res) => {
 });
 
 server.get("/sources-size", async (req, res) => {
+  console.log('sources-size');
   const siteId = req.query && req.query.siteId;
   const files = filesDictionary[siteId].filter((file) => !!file.link && file.link !== 'empty');
   if (!siteId || !files) {
@@ -123,10 +127,9 @@ server.get("/sources-size", async (req, res) => {
   }
   const fakeTarget = new FakeOutsource();
   const totalSize = await downloadAsZip(sources, fakeTarget, res, true);
-  if(!totalSize){
+  if (!totalSize){
     res.sendStatus(500).end();
-  }
-  else{
+  } else {
     res.end(totalSize.toString());
   }
 });
@@ -143,7 +146,6 @@ server.get("/archive", async (req, res) => {
   }
 
   delete filesDictionary[siteId];
-
   const sources = files
     .map((file) => ({
         data: null,
@@ -156,7 +158,7 @@ server.get("/archive", async (req, res) => {
 
   const archiveName = sources[0]["path"].split("/")[0];
   setHeaders(archiveName, totalSize, res);
-  await downloadAsZip(sources, res, false).catch((error)=>{
+  await downloadAsZip(sources, res, res, false).catch((error)=>{
     res.sendStatus(500);
     res.message(error).end();
   });
@@ -169,64 +171,45 @@ async function getAssetSourcesUrls(assetId) {
   return response;
 }
 
-function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
+async function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
   return new Promise(async (resolve, reject) => {
     let archiveName;
     let filesNames;
     let zipInfo;
+
     try {
       archiveName = sourceStreams[0]["path"].split("/")[0];
-      filesNames = sourceStreams.map((file) => {
-        if(file) {
-          return file.filename
-        }
-      })
-       zipInfo = {
+      filesNames = sourceStreams.map((file) => (file ? file.filename : null));
+      
+      zipInfo = {
         archiveName,
-        files: filesNames,
-      }
+        files: filesNames.filter(Boolean), // Remove null entries
+      };
 
-      const archive = archiver("zip", {
-        zlib: { level: 0 }, // Sets the compression level.
-      });
-      targetStream.on("close", function() {
-        targetStream.end();
-      });
-
-      targetStream.on("finish", () => {
-        const size = archive.pointer();
-        resolve(size);
-        console.log(size + " after archiving total bytes - finish -");
-      });
-
-      archive.pipe(targetStream);
+      const zip = new AdmZip();
+      let size = 0;
 
       if (!isFake) {
         const totalSources = sourceStreams.length;
-        archive.on("progress", async (progress) => {
-          let processedItems = progress.entries.processed;
-          if (processedItems < totalSources) {
-            await updateSource(sourceStreams[processedItems]);
-            appendToArchive(archive, sourceStreams[processedItems]);
-          } else {
-            archive.finalize();
-          }
-        });
-        await updateSource(sourceStreams[0]);
-        appendToArchive(archive, sourceStreams[0]);
+        for (let i = 0; i < totalSources; i++) {
+          await updateSource(sourceStreams[i]);
+          appendToArchive(zip, sourceStreams[i]);
+        }
+        const zipData = zip.toBuffer();
+        size = zipData.length;
+        targetStream.write(zipData);
       } else {
-        // archive.on("progress", () => {
-        //   origRes.write("*");
-        // });
         sourceStreams.forEach((source) => {
           if (source) {
-            appendToArchive(archive, source);
+            size += source.data._max;
           }
         });
-        archive.finalize();
       }
+      targetStream.end();
+      resolve(size);
+      console.log(size + ' after archiving total bytes - finish -');
     } catch (error) {
-      reject({ error: error.message, zipInfo: zipInfo })
+      reject({ error: error.message, zipInfo: zipInfo });
     }
   }).catch((errorData) => {
     const service = new CollectionMicrositeService(iconik);
@@ -235,11 +218,30 @@ function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
       status: 'FAILED',
       title: 'Archive server',
       progress_processed: 100,
-      type: 'CUSTOM'
+      type: 'CUSTOM',
     }).then(() => {
       console.log(errorData.error);
     });
   });
+}
+
+async function updateSource(source) {
+  try {
+    const response = await axios.get(source.link, {
+      responseType: 'arraybuffer',
+      httpAgent: new http.Agent({ keepAlive: true }),
+      httpsAgent: new https.Agent({ keepAlive: true }),
+    });
+    source.data = Buffer.from(response.data);
+    return Promise.resolve();
+  } catch (error) {
+    console.log('UPDATE SOURCE ERROR');
+    axiosErrorLogger(error);
+  }
+}
+
+function appendToArchive(archive, source) {
+  archive.addFile(source.filename, source.data, '', 0o755);
 }
 
 async function getSourcesInfo(files) {
@@ -275,30 +277,6 @@ async function getSourcesInfo(files) {
       })
       .filter((source) => !!source)
   );
-}
-
-async function updateSource(source) {
-  try {
-    const { data } = await axios(source.link, {
-      responseType: "stream",
-      httpAgent: new http.Agent({ keepAlive: true }),
-      httpsAgent: new https.Agent({ keepAlive: true }),
-    });
-    source.data = data;
-    return Promise.resolve();
-  } catch (error) {
-    console.log("UPDATE SOURCE ERROR");
-    axiosErrorLogger(error);
-  }
-}
-
-function appendToArchive(archive, source) {
-
-  archive.append(source.data, {
-    prefix: source.path || null,
-    name: source.filename,
-  });
-  // archive.directory()
 }
 
 function setHeaders(archiveName, totalSize, response) {
