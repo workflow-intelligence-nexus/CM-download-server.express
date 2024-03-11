@@ -2,8 +2,8 @@ const express = require("express");
 const CollectionMicrositeService = require("./collectionMicrosite.service.js");
 require('dotenv').config({ path: __dirname + '/config/.env' });
 const server = express();
-const AdmZip = require('adm-zip');
 const axios = require("axios");
+const archiver = require('archiver');
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
@@ -171,7 +171,7 @@ async function getAssetSourcesUrls(assetId) {
   return response;
 }
 
-async function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
+function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
   return new Promise(async (resolve, reject) => {
     let archiveName;
     let filesNames;
@@ -179,37 +179,54 @@ async function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
 
     try {
       archiveName = sourceStreams[0]["path"].split("/")[0];
-      filesNames = sourceStreams.map((file) => (file ? file.filename : null));
-      
-      zipInfo = {
+      filesNames = sourceStreams.map((file) => {
+        if(file) {
+          return file.filename
+        }
+      })
+       zipInfo = {
         archiveName,
-        files: filesNames.filter(Boolean), // Remove null entries
-      };
+        files: filesNames,
+      }
 
-      const zip = new AdmZip();
-      let size = 0;
+      const archive = archiver("zip", {
+        zlib: { level: 0 }, // Sets the compression level.
+      });
+      targetStream.on("close", function() {
+        targetStream.end();
+      });
+
+      targetStream.on("finish", () => {
+        const size = archive.pointer();
+        resolve(size);
+        console.log(size + " after archiving total bytes - finish -");
+      });
+
+      archive.pipe(targetStream);
 
       if (!isFake) {
         const totalSources = sourceStreams.length;
-        for (let i = 0; i < totalSources; i++) {
-          await updateSource(sourceStreams[i]);
-          appendToArchive(zip, sourceStreams[i]);
-        }
-        const zipData = zip.toBuffer();
-        size = zipData.length;
-        targetStream.write(zipData);
+        archive.on("progress", async (progress) => {
+          let processedItems = progress.entries.processed;
+          if (processedItems < totalSources) {
+            await updateSource(sourceStreams[processedItems]);
+            appendToArchive(archive, sourceStreams[processedItems]);
+          } else {
+            archive.finalize();
+          }
+        });
+        await updateSource(sourceStreams[0]);
+        appendToArchive(archive, sourceStreams[0]);
       } else {
         sourceStreams.forEach((source) => {
           if (source) {
-            size += source.data._max;
+            appendToArchive(archive, source);
           }
         });
+        archive.finalize();
       }
-      targetStream.end();
-      resolve(size);
-      console.log(size + ' after archiving total bytes - finish -');
     } catch (error) {
-      reject({ error: error.message, zipInfo: zipInfo });
+      reject({ error: error.message, zipInfo: zipInfo })
     }
   }).catch((errorData) => {
     const service = new CollectionMicrositeService(iconik);
@@ -218,30 +235,35 @@ async function downloadAsZip(sourceStreams, targetStream, origRes, isFake) {
       status: 'FAILED',
       title: 'Archive server',
       progress_processed: 100,
-      type: 'CUSTOM',
+      type: 'CUSTOM'
     }).then(() => {
       console.log(errorData.error);
     });
   });
 }
 
+
 async function updateSource(source) {
   try {
-    const response = await axios.get(source.link, {
-      responseType: 'arraybuffer',
+    const { data } = await axios(source.link, {
+      responseType: "stream",
       httpAgent: new http.Agent({ keepAlive: true }),
       httpsAgent: new https.Agent({ keepAlive: true }),
     });
-    source.data = Buffer.from(response.data);
+    source.data = data;
     return Promise.resolve();
   } catch (error) {
-    console.log('UPDATE SOURCE ERROR');
+    console.log("UPDATE SOURCE ERROR");
     axiosErrorLogger(error);
   }
 }
 
 function appendToArchive(archive, source) {
-  archive.addFile(source.filename, source.data, '', 0o755);
+
+  archive.append(source.data, {
+    prefix: source.path || null,
+    name: source.filename,
+  });
 }
 
 async function getSourcesInfo(files) {
