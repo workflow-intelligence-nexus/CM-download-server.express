@@ -49,8 +49,7 @@ module.exports = class CollectionMicrositeService {
       });
       console.log("ASSETS", assetFiles);
       const originalFile = assetFiles.objects.find((asset) => {
-
-        return asset.format_id === originalFormat?.id && asset.url
+      return asset.format_id === originalFormat?.id && asset.url
       });
       console.log('asset & url', assetId, originalFile?.url);
       return originalFile?.url ? originalFile.url : 'empty';
